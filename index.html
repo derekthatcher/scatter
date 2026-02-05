@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="author" content="Gemini and Derek Thatcher">
+    <title>AS91581: Bivariate Relationship Master</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg: #f1f5f9;
+            --text: #1e293b;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            max-width: 650px;
+            width: 100%;
+            text-align: center;
+        }
+
+        /* Layout for the Plot and Axis Labels */
+        .plot-wrapper {
+            position: relative;
+            margin: 30px auto;
+            padding-left: 50px;
+            display: inline-block;
+        }
+
+        canvas {
+            background: #fff;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            display: block;
+        }
+
+        .y-axis-label {
+            position: absolute;
+            left: -85px;
+            top: 50%;
+            transform: translateY(-50%) rotate(-90deg);
+            width: 250px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #475569;
+            text-align: center;
+        }
+
+        .x-axis-label {
+            margin-top: 12px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #475569;
+        }
+
+        .score-board {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            color: #64748b;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 10px;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        select,
+        button {
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            font-size: 14px;
+        }
+
+        select:disabled {
+            background: #f8fafc;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        button {
+            grid-column: span 2;
+            background: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        #feedback {
+            font-weight: bold;
+            margin-top: 15px;
+            min-height: 1.5em;
+            padding: 10px;
+            border-radius: 6px;
+        }
+
+        .stats-box {
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #64748b;
+            display: none;
+            background: #f8fafc;
+            padding: 5px;
+            border-radius: 4px;
+        }
+
+        .correct {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .incorrect {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="score-board">
+            <span id="context-title">Loading...</span>
+            <span>Score: <span id="score">0</span> / <span id="total">0</span> | Best: <span id="highscore">0 /
+                    0</span></span>
+        </div>
+
+        <div class="plot-wrapper">
+            <div class="y-axis-label" id="y-label">Variable Y</div>
+            <canvas id="plot" width="400" height="400"></canvas>
+            <div class="x-axis-label" id="x-label">Variable X</div>
+        </div>
+
+        <div class="controls">
+            <select id="direction" onchange="handleDirectionChange()">
+                <option value="">-- Direction --</option>
+                <option value="positive">Positive</option>
+                <option value="negative">Negative</option>
+                <option value="none">No relationship</option>
+            </select>
+
+            <select id="form">
+                <option value="">-- Form --</option>
+                <option value="linear">Linear</option>
+                <option value="non-linear">Non-linear</option>
+                <option value="na">N/A</option>
+            </select>
+
+            <select id="strength" style="grid-column: span 2;">
+                <option value="">-- Strength --</option>
+                <option value="weak">Weak</option>
+                <option value="moderate">Moderate</option>
+                <option value="strong">Strong</option>
+                <option value="very strong">Very Strong</option>
+                <option value="na">N/A</option>
+            </select>
+
+            <button onclick="checkAnswer()">Check Answer</button>
+            <button id="next-btn" onclick="initGame()" style="background: #64748b;">Next Case Study</button>
+        </div>
+
+        <div id="feedback"></div>
+        <div id="stats" class="stats-box"></div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('plot');
+        const ctx = canvas.getContext('2d');
+        const contexts = [
+            { title: "Part-time Job", x: "Hours Worked (Weekly)", y: "Pay Received ($)" },
+            { title: "Social Media", x: "Daily Screen Time (min)", y: "Battery Life (%)" },
+            { title: "Gaming Skills", x: "Hours of Practice", y: "Win Rate (%)" },
+            { title: "Late Nights", x: "Hours of Sleep", y: "Energy Level (1-10)" },
+            { title: "School Canteen", x: "Money Spent ($)", y: "Quantity of Snacks" },
+            { title: "Streaming", x: "Episodes Watched", y: "Homework Remaining" },
+            { title: "Driving Lessons", x: "Number of Lessons", y: "Driving Test Errors" },
+            { title: "Sport Training", x: "Fitness Sessions", y: "Resting Heart Rate" },
+            { title: "Pocket Money", x: "Chores Completed", y: "Allowance ($)" },
+            { title: "Socializing", x: "Friends Invited", y: "Cost of Party ($)" },
+            { title: "Phone Storage", x: "Number of Photos", y: "Available Space (GB)" },
+            { title: "Math Class", x: "Calculator Battery", y: "Brightness Level" },
+            { title: "Skateboarding", x: "Speed (km/h)", y: "Fall Risk (%)" },
+            { title: "TikTok Trends", x: "Video Likes", y: "Dopamine Level" },
+            { title: "Summer Holidays", x: "Sunscreen Applied", y: "Sunburn Severity" },
+            { title: "Music Playlists", x: "Songs Added", y: "Total Duration (min)" },
+            { title: "Fast Food", x: "Burgers Eaten", y: "Feeling of Regret" },
+            { title: "Exam Season", x: "Cups of Coffee", y: "Hand Tremors" },
+            { title: "Bus Commute", x: "Traffic Volume", y: "Arrival Time (Late min)" },
+            { title: "Gym Progress", x: "Weeks Training", y: "Max Bench Press (kg)" },
+            { title: "Random Study", x: "Shoe Size", y: "English Essay Mark" },
+            { title: "Phone Use", x: "Screen Brightness", y: "Eye Strain Level" },
+            { title: "Skincare", x: "Water Consumed (L)", y: "Pimple Count" },
+            { title: "Venting", x: "Text Message Length", y: "Time to Reply (min)" },
+            { title: "School Bag", x: "Number of Textbooks", y: "Back Pain Level" }
+        ];
+
+        let currentData = {};
+        let score = 0, total = 0;
+
+        // Load High Score Fraction
+        let best = JSON.parse(localStorage.getItem('bivariateBest')) || { correct: 0, total: 0 };
+        updateHighScoreDisplay();
+
+        function updateHighScoreDisplay() {
+            document.getElementById('highscore').textContent = `${best.correct} / ${best.total}`;
+        }
+
+        function handleDirectionChange() {
+            const dir = document.getElementById('direction').value;
+            const f = document.getElementById('form'), s = document.getElementById('strength');
+            if (dir === 'none') {
+                f.value = "na"; s.value = "na";
+                f.disabled = true; s.disabled = true;
+            } else {
+                f.disabled = false; s.disabled = false;
+            }
+        }
+
+        function calculateStats(pts) {
+            const n = pts.length;
+            let sX = 0, sY = 0, sXY = 0, sX2 = 0, sY2 = 0;
+            pts.forEach(p => {
+                sX += p.x; sY += p.y; sXY += p.x * p.y;
+                sX2 += p.x * p.x; sY2 += p.y * p.y;
+            });
+            const r = (n * sXY - sX * sY) / Math.sqrt((n * sX2 - sX ** 2) * (n * sY2 - sY ** 2));
+            const r2 = isNaN(r) ? 0 : r * r;
+
+            let strength = "weak";
+            if (r2 > 0.81) strength = "very strong";
+            else if (r2 > 0.50) strength = "strong";
+            else if (r2 > 0.15) strength = "moderate";
+
+            return { r: r.toFixed(3), r2: r2.toFixed(3), strength };
+        }
+
+        function initGame() {
+            document.getElementById('feedback').textContent = '';
+            document.getElementById('feedback').className = '';
+            document.getElementById('stats').style.display = 'none';
+            document.querySelectorAll('select').forEach(s => { s.value = ""; s.disabled = false; });
+
+            const context = contexts[Math.floor(Math.random() * contexts.length)];
+            document.getElementById('context-title').textContent = context.title;
+            document.getElementById('x-label').textContent = context.x;
+            document.getElementById('y-label').textContent = context.y;
+
+            const dir = ['positive', 'negative', 'none'][Math.floor(Math.random() * 3)];
+            const form = ['linear', 'non-linear'][Math.floor(Math.random() * 2)];
+            const strengthTarget = ['weak', 'moderate', 'strong', 'very strong'][Math.floor(Math.random() * 4)];
+
+            const ranges = { 'very strong': [0.82, 0.98], 'strong': [0.52, 0.80], 'moderate': [0.18, 0.49], 'weak': [0.05, 0.16] };
+            const target = (dir === 'none') ? [0, 0.04] : ranges[strengthTarget];
+
+            let points = [];
+            let noise = 50;
+            // Targeted data generation loop
+            for (let attempt = 0; attempt < 150; attempt++) {
+                points = [];
+                for (let i = 0; i < 55; i++) {
+                    let x = Math.random() * 320 + 40;
+                    let y;
+                    if (dir === 'none') { y = Math.random() * 320 + 40; }
+                    else {
+                        let trend = (form === 'linear') ? x : (x * x) / 300 + 40;
+                        y = (dir === 'positive') ? 400 - trend : trend;
+                        y += (Math.random() - 0.5) * noise;
+                    }
+                    points.push({ x, y: Math.max(30, Math.min(370, y)) });
+                }
+                const s = calculateStats(points);
+                const currentR2 = parseFloat(s.r2);
+                if (currentR2 >= target[0] && currentR2 <= target[1]) break;
+                noise = (currentR2 > target[1]) ? noise + 8 : noise - 6;
+                if (noise < 1) noise = 1;
+            }
+
+            const finalStats = calculateStats(points);
+            currentData = {
+                direction: dir,
+                form: dir === 'none' ? 'na' : form,
+                strength: dir === 'none' ? 'na' : finalStats.strength,
+                r: finalStats.r, r2: finalStats.r2, points
+            };
+            console.log(currentData);
+
+            drawPlot();
+        }
+
+        function drawPlot() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.strokeRect(30, 10, 360, 360);
+            ctx.fillStyle = '#3b82f6';
+            currentData.points.forEach(p => {
+                ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fill();
+            });
+        }
+
+        function checkAnswer() {
+            const d = document.getElementById('direction').value;
+            const f = document.getElementById('form').value;
+            const s = document.getElementById('strength').value;
+            if (!d || !f || !s || document.getElementById('stats').style.display === 'block') return;
+
+            total++;
+            const win = (d === currentData.direction && f === currentData.form && s === currentData.strength);
+            const fb = document.getElementById('feedback');
+
+            if (win) {
+                score++;
+                fb.innerHTML = "✅ Correct!";
+                fb.className = "correct";
+            } else {
+                fb.innerHTML = `❌ Incorrect. Actual: ${currentData.direction}, ${currentData.form}, ${currentData.strength}`;
+                fb.className = "incorrect";
+            }
+
+            // Percentage comparison for High Score
+            const currentRate = score / total;
+            const bestRate = best.total === 0 ? 0 : best.correct / best.total;
+
+            if (currentRate >= bestRate || best.total === 0) {
+                best = { correct: score, total: total };
+                localStorage.setItem('bivariateBest', JSON.stringify(best));
+                updateHighScoreDisplay();
+            }
+
+            document.getElementById('stats').style.display = 'block';
+            document.getElementById('stats').innerHTML = `r = ${currentData.r} | R² = ${currentData.r2}`;
+            document.getElementById('score').textContent = score;
+            document.getElementById('total').textContent = total;
+        }
+
+        initGame();
+    </script>
+</body>
+
+</html>
