@@ -1,0 +1,141 @@
+<html>
+
+<head>
+  <title>Correlation</title>
+  <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
+
+  <head>
+    <!-- Load plotly.js into the DOM -->
+    <script src='https://cdn.plot.ly/plotly-2.9.0.min.js'></script>
+    <style>
+      body, #container{
+        text-align: center;
+        margin:0;
+        font-family: monospace;
+      }
+      #container{
+        margin:10px auto;
+      }
+      .red {
+        background: red;
+      }
+      button{
+        text-transform: uppercase;
+        padding: 10px 20px;
+      }
+      .green {
+        background: green;
+      }
+      #values{
+        color:white;
+      }
+
+    </style>
+  </head>
+
+<body>
+  <div id="container">
+    <h2>Select the correct Correlation</h2>
+  <div id='myDiv'>
+    <!-- Plotly chart will be drawn inside this DIV -->
+  </div>
+
+  <button class="button">pos linear</button>
+  <button class="button">neg linear</button>
+  <button class="button">exponential</button>
+  <button class="button">log</button>
+  <button class="button">no correlation</button>
+  <button class="button">weak</button>
+  <button class="button">moderate</button>
+  <button class="button">strong</button>
+</div>
+<div id="values">
+
+</div>
+Refresh to try again.
+  <script>
+    //randomly chose a correlation function
+    var items = ["neg linear", "pos linear", "exponential", "log", "no correlation"]
+    //var pick = items[Math.floor(Math.random() * items.length)];
+    var pick = "exponential";
+    var grad = (Math.random()*20+20)/100;
+    var Rvalue = 0.5;
+
+    function getY(type, x, noise) {
+      if(noise < 0.5 && Math.random() < 0.5){
+        return 20 * noise * Math.random()*(Math.round(Math.random()) * 2 - 1);
+      }
+      switch (type) {
+        case "neg linear":
+          return -grad * x + 10 * noise * Math.random()*(Math.round(Math.random()) * 2 - 1);
+        case "pos linear":
+          return grad * x + 10 * noise * Math.random()*(Math.round(Math.random()) * 2 - 1);
+        case "exponential":
+          return Math.exp(x * grad) + 10 * noise * Math.random()*(Math.round(Math.random()) * 2 - 1);
+        case "log":
+          return 5* Math.log(grad*x) + 10 * noise *(Math.round(Math.random()) * 2 - 1);
+        default:
+          // no correlation
+          return 10 * noise * Math.random();
+      }
+    }
+
+    var trace1 = {
+      x: [],
+      y: [],
+      mode: 'markers',
+      type: 'scatter',
+      marker: {
+        size: 12
+      }
+    };
+    const ARRAY_LENGTH = 100;
+    for (let i = 0; i < ARRAY_LENGTH; i++) {
+      trace1.x.push(Math.random() * 10);
+    };
+    var newY = [];
+    trace1.x.forEach(function(item, index) {
+      newY[index] = getY(pick, item, Rvalue);
+    });
+    trace1.y = newY;
+    //console.log(newY);
+    var data = [trace1];
+
+    Plotly.newPlot('myDiv', data);
+
+    // Get the current element
+    var currentNode = document.querySelector('#values');
+
+    // Replace the element
+    currentNode.outerHTML =
+      '<div id="values">pick: ' + pick + ', noise: ' + Rvalue + '</div>';
+
+    document.addEventListener('click', function(event) {
+
+      // If the clicked element doesn't have the right selector, bail
+      if (!event.target.matches('.button')) return;
+
+      // Don't follow the link
+      event.preventDefault();
+
+      // Log the clickednt in the console
+      console.log(event.target.innerHTML);
+      if (event.target.innerHTML == pick) {
+        event.target.classList.add('green');
+        event.target.classList.remove('red');
+      } else {
+        if (event.target.innerHTML=="weak" && Rvalue < 0.5) {
+          event.target.classList.add('green');
+        } else if (event.target.innerHTML=="moderate" && Rvalue > 0.5 && Rvalue < 0.8) {
+          event.target.classList.add('green');
+        }else if (event.target.innerHTML=="strong" && Rvalue > 0.8) {
+          event.target.classList.add('green');
+        }else if(event.target.classList.contains("red")){
+          event.target.classList.remove('red');
+        }else{
+          event.target.classList.add('red');
+      }
+      }
+    }, false);
+  </script>
+</body>
