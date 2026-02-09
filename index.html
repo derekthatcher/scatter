@@ -322,39 +322,58 @@
         }
 
         function checkAnswer() {
-            const d = document.getElementById('direction').value;
-            const f = document.getElementById('form').value;
-            const s = document.getElementById('strength').value;
-            if (!d || !f || !s || document.getElementById('stats').style.display === 'block') return;
+    const d = document.getElementById('direction').value;
+    const f = document.getElementById('form').value;
+    const s = document.getElementById('strength').value;
+    
+    // Prevent double-checking the same graph
+    if (!d || !f || !s || document.getElementById('stats').style.display === 'block') return;
 
-            total++;
-            const win = (d === currentData.direction && f === currentData.form && s === currentData.strength);
-            const fb = document.getElementById('feedback');
+    total++;
+    
+    // Core conditions
+    const directionMatch = (d === currentData.direction);
+    const strengthMatch = (s === currentData.strength);
+    
+    // Special Win Condition: 
+    // If the relationship is Weak, the Form (Linear/Non-linear) is ignored.
+    let formMatch = (f === currentData.form);
+    
+    if (currentData.strength === 'weak' && (f === 'linear' || f === 'non-linear')) {
+        formMatch = true; 
+    }
 
-            if (win) {
-                score++;
-                fb.innerHTML = "✅ Correct!";
-                fb.className = "correct";
-            } else {
-                fb.innerHTML = `❌ Incorrect. Actual: ${currentData.direction}, ${currentData.form}, ${currentData.strength}`;
-                fb.className = "incorrect";
-            }
-
-            // Percentage comparison for High Score
-            const currentRate = score / total;
-            const bestRate = best.total === 0 ? 0 : best.correct / best.total;
-
-            if (currentRate >= bestRate || best.total === 0) {
-                best = { correct: score, total: total };
-                localStorage.setItem('bivariateBest', JSON.stringify(best));
-                updateHighScoreDisplay();
-            }
-
-            document.getElementById('stats').style.display = 'block';
-            document.getElementById('stats').innerHTML = `r = ${currentData.r} | R² = ${currentData.r2}`;
-            document.getElementById('score').textContent = score;
-            document.getElementById('total').textContent = total;
+    const win = directionMatch && strengthMatch && formMatch;
+    const fb = document.getElementById('feedback');
+    
+    if (win) {
+        score++;
+        fb.innerHTML = "✅ Correct!";
+        // Add a helpful note if they won via the 'Weak' exception
+        if (currentData.strength === 'weak' && f !== currentData.form) {
+            fb.innerHTML += " (Form is indistinguishable when weak)";
         }
+        fb.className = "correct";
+    } else {
+        fb.innerHTML = `❌ Incorrect. Actual: ${currentData.direction}, ${currentData.form}, ${currentData.strength}`;
+        fb.className = "incorrect";
+    }
+
+    // High Score Logic (Fractional/Percentage)
+    const currentRate = score / total;
+    const bestRate = best.total === 0 ? 0 : best.correct / best.total;
+
+    if (currentRate >= bestRate) {
+        best = { correct: score, total: total };
+        localStorage.setItem('bivariateBest', JSON.stringify(best));
+        updateHighScoreDisplay();
+    }
+
+    document.getElementById('stats').style.display = 'block';
+    document.getElementById('stats').innerHTML = `r = ${currentData.r} | R² = ${currentData.r2}`;
+    document.getElementById('score').textContent = score;
+    document.getElementById('total').textContent = total;
+}
 
         initGame();
     </script>
