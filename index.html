@@ -339,7 +339,7 @@
     // If the relationship is Weak, the Form (Linear/Non-linear) is ignored.
     let formMatch = (f === currentData.form);
     
-    if (currentData.strength === 'weak' && (f === 'linear' || f === 'non-linear')) {
+    if ((currentData.strength === 'weak' || currentData.strength === 'moderate') && (f === 'linear' || f === 'non-linear')) {
         formMatch = true; 
     }
 
